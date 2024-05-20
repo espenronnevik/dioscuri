@@ -1,6 +1,7 @@
-from dioscuriserver import DioscuriServer
+from .dioscuriserver import DioscuriServer
 
 
-def main():
-    server = DioscuriServer("cert.pem", "key.pem")
+def main(cert_file, key_file):
+    server = DioscuriServer(cert_file, key_file)
+    server.add_listener("127.0.0.1")
     server.run()
