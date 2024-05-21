@@ -1,7 +1,10 @@
 import asyncio
+import re
 import ssl
 
 from .listener import Listener
+
+REQUEST = re.compile(r"^(?P<protocol>\w+)://(?P<hostname>\w+\.\w+)(?P<path>/(?:\w+/?)*)?(?:\?(?P<param>\w+))?$")
 
 
 class DioscuriServer:
@@ -9,6 +12,7 @@ class DioscuriServer:
     def __init__(self, cert_file, key_file):
         self.loop = asyncio.get_event_loop()
         self.listeners = {}
+        self.vhosts = {}
         self.ssl_ctx = None
 
         self.setup_ssl(cert_file, key_file)
@@ -36,7 +40,18 @@ class DioscuriServer:
         del self.listeners[port][hostname]
 
     async def socket_handler(self, reader, writer):
-        pass
+        try:
+            cmd = await reader.readline()
+        except asyncio.IncompleteReadError:
+            return
+
+        res = REQUEST.match(cmd)
 
     def run(self):
+        if len(self.listeners) == 0:
+            raise RuntimeError("Unable to start server without listeners")
+
+        if len(self.vhosts) == 0:
+            raise RuntimeError("Unable to start server without vhosts")
+
         self.loop.run_forever()
