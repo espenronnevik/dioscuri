@@ -30,7 +30,7 @@ class DioscuriServer:
         listener = Listener(hostname, port)
         self.listeners.setdefault(port, {})
         self.listeners[port][hostname] = listener
-        listener.start(self.socket_handler, self.ssl_ctx, self.loop)
+        self.loop.run_until_complete(listener.start(self.socket_handler, self.ssl_ctx))
 
     async def remove_listener(self, hostname, port):
         if port not in self.listeners or hostname not in self.listeners[port]:
