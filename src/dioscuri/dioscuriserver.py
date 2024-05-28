@@ -3,7 +3,7 @@ import re
 import ssl
 
 from .listener import Listener
-from .vhosts import Vhost
+from .hosts import Vhost
 
 REQUEST = re.compile(r"^(?P<protocol>\w+)://(?P<hostname>\w+\.\w+)(?P<path>/(?:\w+/?)*)?(?:\?(?P<param>\w+))?$")
 
@@ -13,7 +13,7 @@ class DioscuriServer:
     def __init__(self, cert_file, key_file):
         self.loop = asyncio.get_event_loop()
         self.listeners = {}
-        self.vhosts = {}
+        self.hosts = {}
         self.ssl_ctx = None
 
         self.setup_ssl(cert_file, key_file)
@@ -41,19 +41,19 @@ class DioscuriServer:
         del self.listeners[port][address]
 
     def add_vhost(self, host, contentroot, default=False):
-        if host in self.vhosts:
+        if host in self.hosts:
             return
 
-        self.vhosts[host] = Vhost(contentroot, "index.gmi")
+        self.hosts[host] = Vhost(contentroot, "index.gmi")
 
         if default:
-            self.vhosts["default"] = self.vhosts[host]
+            self.hosts["default"] = self.hosts[host]
 
-    def remove_vhost(self, host):
-        if host not in self.vhosts:
+    def remove_host(self, host):
+        if host not in self.hosts:
             return
 
-        del self.vhosts[host]
+        del self.hosts[host]
 
     async def socket_handler(self, reader, writer):
         try:
@@ -67,7 +67,7 @@ class DioscuriServer:
         if len(self.listeners) == 0:
             raise RuntimeError("Unable to start server without listeners")
 
-        if len(self.vhosts) == 0:
+        if len(self.hosts) == 0:
             raise RuntimeError("Unable to start server without vhosts")
 
         self.loop.run_forever()
