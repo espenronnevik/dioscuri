@@ -3,14 +3,14 @@ import asyncio
 
 class Listener:
 
-    def __init__(self, hostname, port):
+    def __init__(self, address, port):
         self.server = None
-        self.hostname = hostname
+        self.address = address
         self.port = port
 
     def start(self, callback, ssl_ctx):
         if self.server is None:
-            self.server = asyncio.start_server(callback, self.hostname, self.port, ssl=ssl_ctx)
+            self.server = asyncio.start_server(callback, self.address, self.port, ssl=ssl_ctx)
         return self.server
 
     async def stop(self):

@@ -3,6 +3,7 @@ import re
 import ssl
 
 from .listener import Listener
+from .vhosts import Vhost
 
 REQUEST = re.compile(r"^(?P<protocol>\w+)://(?P<hostname>\w+\.\w+)(?P<path>/(?:\w+/?)*)?(?:\?(?P<param>\w+))?$")
 
@@ -23,21 +24,36 @@ class DioscuriServer:
         self.ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         self.ssl_ctx.load_cert_chain(cert_file, key_file)
 
-    def add_listener(self, hostname, port=1965):
-        if port in self.listeners and hostname in self.listeners[port]:
+    def add_listener(self, address, port=1965):
+        if port in self.listeners and address in self.listeners[port]:
             return
 
-        listener = Listener(hostname, port)
+        listener = Listener(address, port)
         self.listeners.setdefault(port, {})
-        self.listeners[port][hostname] = listener
+        self.listeners[port][address] = listener
         self.loop.run_until_complete(listener.start(self.socket_handler, self.ssl_ctx))
 
-    async def remove_listener(self, hostname, port):
-        if port not in self.listeners or hostname not in self.listeners[port]:
+    async def remove_listener(self, address, port):
+        if port not in self.listeners or address not in self.listeners[port]:
             return
 
-        await self.listeners[port][hostname].stop()
-        del self.listeners[port][hostname]
+        await self.listeners[port][address].stop()
+        del self.listeners[port][address]
+
+    def add_vhost(self, host, contentroot, default=False):
+        if host in self.vhosts:
+            return
+
+        self.vhosts[host] = Vhost(contentroot, "index.gmi")
+
+        if default:
+            self.vhosts["default"] = self.vhosts[host]
+
+    def remove_vhost(self, host):
+        if host not in self.vhosts:
+            return
+
+        del self.vhosts[host]
 
     async def socket_handler(self, reader, writer):
         try:
