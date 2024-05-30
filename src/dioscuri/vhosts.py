@@ -1,6 +1,13 @@
-from pathlib import Path
+import mimetypes
+from pathlib import Path, PurePath
+
+from .response import Response, StatusType
 
 GEMTEXT_EXT = ".gmi"
+
+mimetypes.init()
+mimetypes.add_type("gemini/text", GEMTEXT_EXT)
+
 
 class Vhost:
 
@@ -9,7 +16,6 @@ class Vhost:
         self.index = index
 
     def process(self, request):
-        result = {}
         req_pure = PurePath(request)
 
         if req_pure.suffix != GEMTEXT_EXT:
@@ -23,12 +29,7 @@ class Vhost:
 
         try:
             path = path.resolve(True)
-            result["type"] = "success"
-            result["status"] = 20
-            result["data"] = path
+            mimetype = mimetypes.guess_type(path)
+            return Response().success(mimetype, path.read_bytes())
         except FileNotFoundError:
-            result["type"] = "error"
-            result["status"] = 51
-            result["data"] = "Resource not found"
-
-        return result
+            return Response().permfail(1, "Resource not found")
