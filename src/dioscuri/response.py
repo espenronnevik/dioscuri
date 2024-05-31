@@ -19,41 +19,40 @@ class Response:
         self.statuscode = None
         self.data = None
 
+    def _replymsg(self, message):
+        if message is None:
+            return f"{self.statuscode} {CRLF}".encode()
+        return f"{self.statuscode} {message} {CRLF}".encode()
+
+    def _replybody(self, mimetype, body):
+        return f"{self.statuscode} {mimetype} {CRLF}".encode() + body
+
     def input(self, prompt, statusdigit=0):
         self.statustype = StatusType.INPUT
         self.statuscode = 10 + statusdigit
-        self.data = f"{self.statuscode} {prompt} {CRLF}".encode()
+        self.data = self._replymsg(prompt)
 
-    def success(self, mimetype, content, statusdigit=0):
+    def success(self, mimetype, body, statusdigit=0):
         self.statustype = StatusType.SUCCESS
         self.statuscode = 20 + statusdigit
-        self.data = f"{self.statuscode} {mimetype} {CRLF}".encode() + content
+        self.data = self._replybody(mimetype, body)
 
     def redirect(self, uri, statusdigit=0):
         self.statustype = StatusType.REDIRECT
         self.statuscode = 30 + statusdigit
-        self.data = f"{self.statuscode} {uri} {CRLF}".encode()
+        self.data = self._replymsg(uri)
 
     def tempfail(self, statusdigit=0, message=None):
         self.statustype = StatusType.TEMPFAIL
         self.statuscode = 40 + statusdigit
-        if message is None:
-            self.data = f"{self.statuscode} {CRLF}".encode()
-        else:
-            self.data = f"{self.statuscode} {message} {CRLF}".encode()
+        self.data = self._replymsg(message)
 
     def permfail(self, statusdigit=0, message=None):
         self.statustype = StatusType.PERMFAIL
         self.statuscode = 50 + statusdigit
-        if message is None:
-            self.data = f"{self.statuscode} {CRLF}".encode()
-        else:
-            self.data = f"{self.statuscode} {message} {CRLF}".encode()
+        self.data = self._replymsg(message)
 
     def auth(self, statusdigit=0, message=None):
         self.statustype = StatusType.AUTH
         self.statuscode = 60 + statusdigit
-        if message is None:
-            self.data = f"{self.statuscode} {CRLF}".encode()
-        else:
-            self.data = f"{self.statuscode} {message} {CRLF}".encode()
+        self.data = self._replymsg(message)
