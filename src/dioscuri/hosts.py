@@ -15,8 +15,8 @@ class Vhost:
         self.root = contentroot
         self.index = index
 
-    def process(self, request):
-        req_pure = PurePath(request)
+    def process(self, path, query, cert):
+        req_pure = PurePath(path)
 
         if req_pure.suffix != GEMTEXT_EXT:
             req_path = Path(req_pure.parent, req_pure.stem + GEMTEXT_EXT)

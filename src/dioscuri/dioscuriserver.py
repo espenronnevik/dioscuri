@@ -1,11 +1,14 @@
 import asyncio
 import re
 import ssl
+from hashlib import sha1
+from urllib.parse import unquote
 
 from .listener import Listener
 from .hosts import Vhost
+from .response import Response
 
-REQUEST = re.compile(r"^(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>\w+))?$")
+REQUEST = re.compile(r"(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>[\w ]+))?$")
 
 
 class DioscuriServer:
@@ -55,13 +58,51 @@ class DioscuriServer:
 
         del self.hosts[host]
 
+    async def _write_close(self, stream, data):
+        if data is not None:
+            stream.write(data)
+            await stream.drain()
+        stream.close()
+        await stream.wait_closed()
+
     async def socket_handler(self, reader, writer):
         try:
-            cmd = await reader.readline()
+            request = await reader.readline()
         except asyncio.IncompleteReadError:
+            await self._write_close(writer, None)
             return
 
-        res = REQUEST.match(cmd)
+        if len(request) > 1024:
+            response = Response().permfail(9, "Request exceeded limit")
+            await self._write_close(writer, response)
+            return
+
+        request_match = REQUEST.match(unquote(request.decode()))
+
+        if request_match is None:
+            response = Response().permfail(9, "Invalid request")
+            await self._write_close(writer, response)
+            return
+
+        scheme = request_match.group("sceme")
+        authority = request_match.group("authority")
+        path = request_match.group("path")
+        query = request_match.group("query")
+
+        if scheme != "gemini" or authority not in self.hosts:
+            response = Response().permfail(3, "Request for resource refused")
+            await self._write_close(writer, response)
+            return
+
+        if path is None:
+            path = "/"
+
+        cert = writer.get_extra_info("ssl_object").getpeercert(True)
+        if cert is not None:
+            cert = sha1(cert).digest()
+
+        response = self.hosts[authority].process(path, query, cert)
+        await self._write_close(writer, response)
 
     def run(self):
         if len(self.listeners) == 0:
