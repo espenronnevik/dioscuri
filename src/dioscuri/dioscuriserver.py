@@ -5,7 +5,7 @@ import ssl
 from .listener import Listener
 from .hosts import Vhost
 
-REQUEST = re.compile(r"^(?P<protocol>\w+)://(?P<hostname>\w+\.\w+)(?P<path>/(?:\w+/?)*)?(?:\?(?P<param>\w+))?$")
+REQUEST = re.compile(r"^(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>\w+))?$")
 
 
 class DioscuriServer:
