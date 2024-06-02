@@ -8,7 +8,9 @@ from .listener import Listener
 from .hosts import Vhost
 from .response import Response
 
-REQUEST = re.compile(r"(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>[\w ]+))?$")
+REQUEST = re.compile(
+    r"(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>[\w ]+))?$"
+)
 
 
 class DioscuriServer:
