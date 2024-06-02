@@ -16,7 +16,7 @@ class DioscuriServer:
     def __init__(self, cert_file, key_file):
         self.loop = asyncio.get_event_loop()
         self.listeners = {}
-        self.hosts = {}
+        self.authorities = {}
         self.ssl_ctx = None
 
         self.setup_ssl(cert_file, key_file)
@@ -44,19 +44,19 @@ class DioscuriServer:
         del self.listeners[port][address]
 
     def add_vhost(self, host, contentroot, default=False):
-        if host in self.hosts:
+        if host in self.authorities:
             return
 
-        self.hosts[host] = Vhost(contentroot, "index.gmi")
+        self.authorities[host] = Vhost(contentroot, "index.gmi")
 
         if default:
-            self.hosts["default"] = self.hosts[host]
+            self.authorities["default"] = self.authorities[host]
 
     def remove_host(self, host):
-        if host not in self.hosts:
+        if host not in self.authorities:
             return
 
-        del self.hosts[host]
+        del self.authorities[host]
 
     async def _write_close(self, stream, data):
         if data is not None:
@@ -89,7 +89,7 @@ class DioscuriServer:
         path = request_match.group("path")
         query = request_match.group("query")
 
-        if scheme != "gemini" or authority not in self.hosts:
+        if scheme != "gemini" or authority not in self.authorities:
             response = Response().permfail(3, "Request for resource refused")
             await self._write_close(writer, response)
             return
@@ -101,14 +101,14 @@ class DioscuriServer:
         if cert is not None:
             cert = sha1(cert).digest()
 
-        response = self.hosts[authority].process(path, query, cert)
+        response = self.authorities[authority].process(path, query, cert)
         await self._write_close(writer, response)
 
     def run(self):
         if len(self.listeners) == 0:
             raise RuntimeError("Unable to start server without listeners")
 
-        if len(self.hosts) == 0:
-            raise RuntimeError("Unable to start server without vhosts")
+        if len(self.authorities) == 0:
+            raise RuntimeError("Unable to start server without authorities")
 
         self.loop.run_forever()
