@@ -161,3 +161,4 @@ cython_debug/
 
 # Project-spesific additions
 certs/
+content/

@@ -4,12 +4,16 @@ import ssl
 from hashlib import sha1
 from urllib.parse import unquote
 
-from .listener import Listener
-from .hosts import Vhost
-from .response import Response
+from listener import Listener
+from hosts import Vhost
+from response import Response
 
-REQUEST = re.compile(
-    r"(?P<scheme>\w+)://(?P<authority>\w+\.\w+)(?P<path>/(?:[\w.]+/?)*)?(?:\?(?P<query>[\w ]+))?$"
+REQUEST_PATTERN = re.compile(
+    r"^(?P<scheme>\w+)://"
+    r"(?P<host>[\w.]+)"
+    r"(?::(?P<port>\d+))?"
+    r"(?:/(?P<path>[\w.]+/?)*)?"
+    r"(?:\?(?P<query>[\w ]+))?$"
 )
 
 
@@ -18,7 +22,7 @@ class DioscuriServer:
     def __init__(self, cert_file, key_file):
         self.loop = asyncio.get_event_loop()
         self.listeners = {}
-        self.authorities = {}
+        self.domains = {}
         self.ssl_ctx = None
 
         self.setup_ssl(cert_file, key_file)
@@ -29,7 +33,7 @@ class DioscuriServer:
         self.ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
         self.ssl_ctx.load_cert_chain(cert_file, key_file)
 
-    def add_listener(self, address, port=1965):
+    def add_listener(self, address, port):
         if port in self.listeners and address in self.listeners[port]:
             return
 
@@ -45,27 +49,22 @@ class DioscuriServer:
         await self.listeners[port][address].stop()
         del self.listeners[port][address]
 
-    def add_vhost(self, host, contentroot, default=False):
-        if host in self.authorities:
-            return
-
-        self.authorities[host] = Vhost(contentroot, "index.gmi")
-
-        if default:
-            self.authorities["default"] = self.authorities[host]
+    def add_vhost(self, domain, rootpath):
+        if domain not in self.domains:
+            self.domains[domain] = Vhost(rootpath, "index.gmi")
 
     def remove_host(self, host):
-        if host not in self.authorities:
+        if host not in self.domains:
             return
 
-        del self.authorities[host]
+        del self.domains[host]
 
-    async def _write_close(self, stream, data):
-        if data is not None:
-            stream.write(data)
+    @staticmethod
+    async def _write_close(stream, response):
+        if response is not None:
+            stream.write(response.data)
             await stream.drain()
         stream.close()
-        await stream.wait_closed()
 
     async def socket_handler(self, reader, writer):
         try:
@@ -74,43 +73,44 @@ class DioscuriServer:
             await self._write_close(writer, None)
             return
 
+        response = Response()
+
         if len(request) > 1024:
-            response = Response().permfail(9, "Request exceeded limit")
+            response.permfail(9, "Request exceeded limit")
             await self._write_close(writer, response)
             return
 
-        request_match = REQUEST.match(unquote(request.decode()))
+        request = unquote(request.decode()).strip()
+        m_request = REQUEST_PATTERN.match(request)
 
-        if request_match is None:
-            response = Response().permfail(9, "Invalid request")
+        if m_request is None:
+            response.permfail(9, "Invalid request")
             await self._write_close(writer, response)
             return
 
-        scheme = request_match.group("sceme")
-        authority = request_match.group("authority")
-        path = request_match.group("path")
-        query = request_match.group("query")
+        scheme = m_request.group("scheme")
+        host = m_request.group("host")
+        # port = m_request.group("port")
+        path = m_request.group("path")
+        query = m_request.group("query")
 
-        if scheme != "gemini" or authority not in self.authorities:
-            response = Response().permfail(3, "Request for resource refused")
+        if scheme != "gemini" or host not in self.domains:
+            response.permfail(3, "Request for resource denied")
             await self._write_close(writer, response)
             return
-
-        if path is None:
-            path = "/"
 
         cert = writer.get_extra_info("ssl_object").getpeercert(True)
         if cert is not None:
             cert = sha1(cert).digest()
 
-        response = self.authorities[authority].process(path, query, cert)
+        response = self.domains[host].process(path, query, cert)
         await self._write_close(writer, response)
 
     def run(self):
         if len(self.listeners) == 0:
-            raise RuntimeError("Unable to start server without listeners")
+            raise RuntimeError("Unable to start server without configured listeners")
 
-        if len(self.authorities) == 0:
-            raise RuntimeError("Unable to start server without authorities")
+        if len(self.domains) == 0:
+            raise RuntimeError("Unable to start server without configured hosts")
 
         self.loop.run_forever()

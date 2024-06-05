@@ -1,7 +1,7 @@
 import mimetypes
 from pathlib import Path, PurePath
 
-from .response import Response, StatusType
+from response import Response
 
 GEMTEXT_EXT = ".gmi"
 
@@ -11,25 +11,28 @@ mimetypes.add_type("gemini/text", GEMTEXT_EXT)
 
 class Vhost:
 
-    def __init__(self, contentroot, index):
-        self.root = contentroot
-        self.index = index
+    def __init__(self, rootpath, indexfile):
+        self.rootpath = rootpath
+        self.indexfile = indexfile
 
     def process(self, path, query, cert):
-        req_pure = PurePath(path)
+        response = Response()
 
-        if req_pure.suffix != GEMTEXT_EXT:
-            req_path = Path(req_pure.parent, req_pure.stem + GEMTEXT_EXT)
-        else:
-            req_path = Path(req_pure)
-        path = Path(self.root, req_path.resolve())
+        if path is None:
+            path = ""
 
-        if path.is_dir():
-            path = Path(path, self.index)
+        fpath = Path(self.rootpath, path).resolve()
+
+        if fpath.is_dir():
+            fpath = Path(fpath, self.indexfile)
+        elif not fpath.is_file():
+            fpath = Path(PurePath(fpath).with_suffix(GEMTEXT_EXT))
 
         try:
-            path = path.resolve(True)
-            mimetype = mimetypes.guess_type(path)
-            return Response().success(mimetype, path.read_bytes())
+            fpath = fpath.resolve(True)
+            mimetype = mimetypes.guess_type(fpath)[0]
+            response.success(mimetype, fpath.read_bytes())
         except FileNotFoundError:
-            return Response().permfail(1, "Resource not found")
+            response.permfail(1, "Resource not found")
+
+        return response
