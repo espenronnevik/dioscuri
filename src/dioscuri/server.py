@@ -4,9 +4,9 @@ import ssl
 from hashlib import sha1
 from urllib.parse import unquote
 
-from listener import Listener
-from hosts import Vhost
-from response import Response
+from .listener import Listener
+from .hosts import Vhost
+from .response import Response
 
 REQUEST_PATTERN = re.compile(
     r"^(?P<scheme>\w+)://"
@@ -17,7 +17,7 @@ REQUEST_PATTERN = re.compile(
 )
 
 
-class DioscuriServer:
+class Server:
 
     def __init__(self, cert_file, key_file):
         self.loop = asyncio.get_event_loop()

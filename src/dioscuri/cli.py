@@ -1,7 +1,7 @@
 import pathlib
 from argparse import ArgumentParser
 
-from dioscuriserver import DioscuriServer
+from .server import Server
 
 
 def parse_arguments():
@@ -39,11 +39,7 @@ def main():
         addr = args["listen"]
         port = "1965"
 
-    server = DioscuriServer(certfile, keyfile)
+    server = Server(certfile, keyfile)
     server.add_listener(addr, port)
     server.add_vhost(args["domain"], rootpath)
     server.run()
-
-
-if __name__ == "__main__":
-    main()

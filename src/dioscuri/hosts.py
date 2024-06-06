@@ -1,7 +1,7 @@
 import mimetypes
 from pathlib import Path, PurePath
 
-from response import Response
+from .response import Response
 
 GEMTEXT_EXT = ".gmi"
 

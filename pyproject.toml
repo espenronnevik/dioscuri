@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "dioscuri"
+version = "0.1.0"
+description = "A server speaking the Gemini protocol"
+authors = ["Espen Rønnevik <espen@digitalsoup.eu>"]
+license = "GPL3"
+readme = "README.md"
+packages = [
+    { include = "dioscuri", from = "src"}
+]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.scripts]
+dioscuri = 'dioscuri.cli:main'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
