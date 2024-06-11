@@ -1,6 +1,8 @@
 import pathlib
 from argparse import ArgumentParser
 
+import ifaddr
+
 from .server import Server
 
 
@@ -13,8 +15,23 @@ def parse_arguments():
     parser.add_argument("--certfile", type=pathlib.Path, required=True)
     parser.add_argument("--rootpath", type=pathlib.Path, required=True)
     parser.add_argument("--domain", default="localhost")
-    parser.add_argument("--listen", default="127.0.0.1:1965")
+    parser.add_argument("--port", default="1965")
+    parser.add_argument("--address", action="append")
     return parser.parse_args()
+
+
+def get_ifaddrs(addresses):
+    addrs = set()
+    if addresses is None:
+        for adapter in ifaddr.get_adapters():
+            for ip in adapter.ips:
+                if ip.is_IPv6:
+                    addrs.add(ip.ip[0])
+                else:
+                    addrs.add(ip.ip)
+    else:
+        addrs.update(set(addresses))
+    return addrs
 
 
 def main():
@@ -33,13 +50,10 @@ def main():
     if not rootpath.is_dir():
         raise ValueError(f"Root datapath {rootpath} is not a directory")
 
-    if ":" in args["listen"]:
-        addr, port = args["listen"].rsplit(":")
-    else:
-        addr = args["listen"]
-        port = "1965"
-
     server = Server(certfile, keyfile)
-    server.add_listener(addr, port)
+
+    for addr in get_ifaddrs(args["listen"]):
+        server.add_listener(addr, args["port"])
+
     server.add_vhost(args["domain"], rootpath)
     server.run()

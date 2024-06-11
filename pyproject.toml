@@ -11,6 +11,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.11"
+ifaddr = "^0.2.0"
 
 [tool.poetry.scripts]
 dioscuri = 'digitalsoup.dioscuri.cli:main'
