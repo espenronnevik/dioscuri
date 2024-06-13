@@ -8,13 +8,13 @@ from .server import Server
 
 def parse_arguments():
     parser = ArgumentParser(
-        prog="Dioscuri Server",
+        prog="dioscuri",
         description="Serving text and files using the Gemini protocol",
     )
     parser.add_argument("--keyfile", type=pathlib.Path, required=True)
     parser.add_argument("--certfile", type=pathlib.Path, required=True)
     parser.add_argument("--rootpath", type=pathlib.Path, required=True)
-    parser.add_argument("--domain", default="localhost")
+    parser.add_argument("--domain", required=True)
     parser.add_argument("--port", default="1965")
     parser.add_argument("--address", action="append")
     return parser.parse_args()
