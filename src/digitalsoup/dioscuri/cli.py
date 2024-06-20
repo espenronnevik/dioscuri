@@ -17,6 +17,7 @@ def parse_arguments():
     parser.add_argument("--domain", required=True)
     parser.add_argument("--port", default="1965")
     parser.add_argument("--address", action="append")
+    parser.add_argument("--workers", default=100)
     return parser.parse_args()
 
 
@@ -50,7 +51,7 @@ def main():
     if not rootpath.is_dir():
         raise ValueError(f"Root datapath {rootpath} is not a directory")
 
-    server = Server(certfile, keyfile)
+    server = Server(certfile, keyfile, args["workers"])
 
     for addr in get_ifaddrs(args["listen"]):
         server.add_listener(addr, args["port"])
