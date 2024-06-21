@@ -21,9 +21,9 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def get_ifaddrs(addresses):
+def get_ifaddrs(addrlist):
     addrs = set()
-    if addresses is None:
+    if addrlist is None:
         for adapter in ifaddr.get_adapters():
             for ip in adapter.ips:
                 if ip.is_IPv6:
@@ -31,7 +31,7 @@ def get_ifaddrs(addresses):
                 else:
                     addrs.add(ip.ip)
     else:
-        addrs.update(set(addresses))
+        addrs.update(set(addrlist))
     return addrs
 
 
@@ -54,7 +54,7 @@ def main():
     server = Server(args["workers"])
     server.setup_ssl(certfile, keyfile)
 
-    for addr in get_ifaddrs(args["listen"]):
+    for addr in get_ifaddrs(args["address"]):
         server.add_listener(addr, args["port"])
 
     server.add_vhost(args["domain"], rootpath)
