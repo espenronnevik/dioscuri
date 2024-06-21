@@ -23,10 +23,8 @@ class Server:
         self.loop = asyncio.get_event_loop()
         self.listeners = {}
         self.domains = {}
-        self.ssl_ctx = None
         self.sem = asyncio.Semaphore(workers)
-
-        self.setup_ssl(cert_file, key_file)
+        self.ssl_ctx = None
 
     def setup_ssl(self, cert_file, key_file):
         self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -121,6 +119,9 @@ class Server:
             await self._write_close(writer, response)
 
     def run(self):
+        if self.ssl_ctx is None:
+            raise RuntimeError("SSL setup is required before starting server")
+
         if len(self.listeners) == 0:
             raise RuntimeError("Unable to start server without configured listeners")
 

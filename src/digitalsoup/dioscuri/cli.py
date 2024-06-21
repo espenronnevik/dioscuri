@@ -51,7 +51,8 @@ def main():
     if not rootpath.is_dir():
         raise ValueError(f"Root datapath {rootpath} is not a directory")
 
-    server = Server(certfile, keyfile, args["workers"])
+    server = Server(args["workers"])
+    server.setup_ssl(certfile, keyfile)
 
     for addr in get_ifaddrs(args["listen"]):
         server.add_listener(addr, args["port"])
