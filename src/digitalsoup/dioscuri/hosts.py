@@ -15,13 +15,13 @@ class Vhost:
         self.rootpath = rootpath
         self.indexfile = indexfile
 
-    def process(self, path, query, cert):
+    def process(self, relpath, query, cert):
         response = Response()
 
-        if path is None:
-            path = ""
+        if relpath is None:
+            relpath = ""
 
-        fpath = Path(self.rootpath, path).resolve()
+        fpath = Path(self.rootpath, relpath).resolve()
 
         if fpath.is_dir():
             fpath = Path(fpath, self.indexfile)
