@@ -19,11 +19,12 @@ REQUEST_PATTERN = re.compile(
 
 class Server:
 
-    def __init__(self, cert_file, key_file, workers):
-        self.loop = asyncio.get_event_loop()
+    def __init__(self, workers):
         self.listeners = {}
         self.domains = {}
         self.sem = asyncio.Semaphore(workers)
+
+        self.loop = None
         self.ssl_ctx = None
 
     def setup_ssl(self, cert_file, key_file):
@@ -34,7 +35,7 @@ class Server:
 
     def add_listener(self, address, port):
         if port in self.listeners and address in self.listeners[port]:
-            return
+            return None
 
         listener = Listener(address, port)
         self.listeners.setdefault(port, {})
@@ -43,7 +44,7 @@ class Server:
 
     async def remove_listener(self, address, port):
         if port not in self.listeners or address not in self.listeners[port]:
-            return
+            return None
 
         await self.listeners[port][address].stop()
         del self.listeners[port][address]
@@ -54,7 +55,7 @@ class Server:
 
     def remove_host(self, host):
         if host not in self.domains:
-            return
+            return None
 
         del self.domains[host]
 
@@ -71,7 +72,7 @@ class Server:
         if len(request) > 1024:
             response.permfail(9, "Request exceeded limit")
             await self._write_close(stream, response)
-            return
+            return None
 
         request = unquote(request.decode()).strip()
         m_request = REQUEST_PATTERN.match(request)
@@ -79,7 +80,7 @@ class Server:
         if m_request is None:
             response.permfail(9, "Invalid request")
             await self._write_close(stream, response)
-            return
+            return None
 
         scheme = m_request.group("scheme")
         host = m_request.group("host")
@@ -90,7 +91,7 @@ class Server:
         if scheme != "gemini" or host not in self.domains:
             response.permfail(3, "Request for resource denied")
             await self._write_close(stream, response)
-            return
+            return None
 
         return {"host": host, "path": path, "query": query}
 
@@ -100,22 +101,25 @@ class Server:
             response = Response()
             response.tempfail(4)
             await self._write_close(writer, response)
-            return
+            return None
 
         async with self.sem:
             try:
                 request = await reader.readline()
-                tokens = await self.validate_request(writer, request)
             except asyncio.IncompleteReadError:
                 await self._write_close(writer, None)
-                return
+                return None
+
+            url_info = await self.validate_request(writer, request)
+            if url_info is None:
+                return None
 
             peercert = writer.get_extra_info("ssl_object").getpeercert(True)
             if peercert is not None:
-                peercert = sha1(peercert).digest()
+                peerfp = sha1(peercert).digest()
 
-            vhost = self.domains[tokens["host"]]
-            response = vhost.process(tokens["path"], tokens["query"], peercert)
+            vhost = self.domains[url_info["host"]]
+            response = vhost.process(url_info["path"], url_info["query"], peerfp)
             await self._write_close(writer, response)
 
     def run(self):
@@ -128,4 +132,5 @@ class Server:
         if len(self.domains) == 0:
             raise RuntimeError("Unable to start server without configured hosts")
 
+        self.loop = asyncio.get_event_loop()
         self.loop.run_forever()
