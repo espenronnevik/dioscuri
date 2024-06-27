@@ -5,18 +5,8 @@ import pytest
 from digitalsoup.dioscuri.hosts import Vhost
 from digitalsoup.dioscuri.response import StatusType
 
-INDEX_GMI = """
-# INDEX.GMI TEST FILE
-
-=> /another.gmi Another gmi file
-"""
-
-ANOTHER_GMI = """
-# ANOTHER.GMI TEST FILE
-
-Some test text here.
-=> /index.gmi Link to the index
-"""
+INDEX_GMI = "# INDEX.GMI TEST FILE"
+ANOTHER_GMI = "# ANOTHER.GMI TEST FILE"
 
 
 @pytest.fixture(scope="module")
