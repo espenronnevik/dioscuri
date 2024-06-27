@@ -1,0 +1,33 @@
+# Path to TLS certificate file
+tlscert = "cert.pem"
+
+# Path to TLS private key file
+tlskey = "key.pem"
+
+# Number of simultanious requests
+workers = 100
+
+# Which IP addresses and ports to listen to. 
+# Use several listener sections if listening to more than one port.
+[[listener]]
+
+# Default port is 1965
+port = 1965
+
+# List of IP addresses to listen to, or "all" to listen to all available addresses on the system
+address = [ "127.0.0.1", "::1" ]
+
+# Site configuration for example.com
+[site."example.com"]
+
+# It is enabled and will answer user requests
+enabled = true
+
+# Path to the root folder for this site
+root = "/home/gemini/capsules/example.com"
+
+# This is not a private site
+private = false
+
+# List of client certificate fingerprints that are allowed to access the site if it is private
+access = []
