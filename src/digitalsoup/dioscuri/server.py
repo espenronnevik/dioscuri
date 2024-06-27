@@ -2,10 +2,13 @@ import asyncio
 import re
 import ssl
 from hashlib import sha1
+from pathlib import Path
 from urllib.parse import unquote
 
-from .listener import Listener
+import ifaddr
+
 from .hosts import Vhost
+from .listener import Listener
 from .response import Response
 
 REQUEST_PATTERN = re.compile(
@@ -17,21 +20,33 @@ REQUEST_PATTERN = re.compile(
 )
 
 
+def ifaddrs(ipv4=True, ipv6=True):
+    addrs = set()
+    for adapter in ifaddr.get_adapters():
+        for ip in adapter.ips:
+            if ip.is_IPv6 and ipv6:
+                addrs.add(ip.ip[0])
+            if ip.is_IPv4 and ipv4:
+                addrs.add(ip.ip)
+    return list(addrs)
+
+
 class Server:
 
-    def __init__(self, workers):
-        self.listeners = {}
-        self.domains = {}
-        self.sem = asyncio.Semaphore(workers)
-
-        self.loop = None
+    def __init__(self):
+        self.config = None
+        self.sem = None
         self.ssl_ctx = None
 
-    def setup_ssl(self, cert_file, key_file):
+        self.listeners = {}
+        self.domains = {}
+        self.loop = None
+
+    def setup_ssl(self, cert, key):
         self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
         self.ssl_ctx.load_default_certs(ssl.Purpose.CLIENT_AUTH)
         self.ssl_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-        self.ssl_ctx.load_cert_chain(cert_file, key_file)
+        self.ssl_ctx.load_cert_chain(cert, key)
 
     def add_listener(self, address, port):
         if port in self.listeners and address in self.listeners[port]:
@@ -96,7 +111,6 @@ class Server:
         return {"host": host, "path": path, "query": query}
 
     async def socket_handler(self, reader, writer):
-
         if self.sem.locked():
             response = Response()
             response.tempfail(4)
@@ -122,15 +136,44 @@ class Server:
             response = vhost.process(url_info["path"], url_info["query"], peerfp)
             await self._write_close(writer, response)
 
-    def run(self):
-        if self.ssl_ctx is None:
-            raise RuntimeError("SSL setup is required before starting server")
+    def run(self, config):
+        config_cert = config.get("tlscert")
+        config_key = config.get("tlskey")
+        if config_cert is None or config_key is None:
+            raise ValueError("Config error: Server is unable to start without configured TLS")
 
-        if len(self.listeners) == 0:
-            raise RuntimeError("Unable to start server without configured listeners")
+        certfile = Path(config_cert).resolve()
+        keyfile = Path(config_key).resolve()
+        if not (certfile.is_file() or keyfile.is_file()):
+            raise ValueError("Config error: tlscert and tlskey must be path to a file")
 
-        if len(self.domains) == 0:
-            raise RuntimeError("Unable to start server without configured hosts")
+        self.setup_ssl(certfile, keyfile)
+
+        config_listeners = config.get("listeners", [])
+        if len(config_listeners) == 0:
+            raise ValueError("Config error: Unable to start server without any configured listeners")
+
+        for item in config_listeners:
+            port = item["port"]
+            addrlist = item["address"]
+            if "all" in addrlist:
+                addrlist = ifaddrs()
+            for addr in addrlist:
+                self.add_listener(addr, port)
+
+        config_site = config.get("site", {})
+        sites = [config_site[site] for site in list(config_site.keys())]
+
+        if len(sites) == 0:
+            raise ValueError("Config error: Unable to start server without any configured sites")
+
+        for site in sites:
+            enabled = site.get("enabled", False)
+            rootpath = site.get("root", None)
+            if enabled and rootpath is not None:
+                self.add_vhost(site, Path(rootpath))
+
+        self.sem = asyncio.Semaphore(config.get("workers", 100))
 
         self.loop = asyncio.get_event_loop()
         self.loop.run_forever()
