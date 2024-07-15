@@ -128,6 +128,7 @@ class Server:
             if url_info is None:
                 return None
 
+            peerfp = None
             peercert = writer.get_extra_info("ssl_object").getpeercert(True)
             if peercert is not None:
                 peerfp = sha1(peercert).digest()
