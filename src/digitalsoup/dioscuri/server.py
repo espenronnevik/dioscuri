@@ -138,7 +138,7 @@ class Server:
             vhost = self.domains[url_info["host"]]
             response = vhost.process(url_info["path"], url_info["query"], peerfp)
 
-            print(f"Returning {response}")
+            print(f"Returning {response.data}")
             await self._write_close(writer, response)
 
     def run(self, config):
