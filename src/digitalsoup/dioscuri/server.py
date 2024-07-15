@@ -40,7 +40,7 @@ class Server:
 
         self.listeners = {}
         self.domains = {}
-        self.loop = None
+        self.loop = asyncio.get_event_loop()
 
     def setup_ssl(self, cert, key):
         self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
@@ -161,19 +161,16 @@ class Server:
             for addr in addrlist:
                 self.add_listener(addr, port)
 
-        config_site = config.get("site", {})
-        sites = [config_site[site] for site in list(config_site.keys())]
-
+        sites = config.get("site", {})
         if len(sites) == 0:
             raise ValueError("Config error: Unable to start server without any configured sites")
 
-        for site in sites:
-            enabled = site.get("enabled", False)
-            rootpath = site.get("root", None)
+        for domain, props in sites.items():
+            enabled = props.get("enabled", False)
+            rootpath = props.get("root", None)
             if enabled and rootpath is not None:
-                self.add_vhost(site, Path(rootpath))
+                self.add_vhost(domain, Path(rootpath))
 
         self.sem = asyncio.Semaphore(config.get("workers", 100))
 
-        self.loop = asyncio.get_event_loop()
         self.loop.run_forever()

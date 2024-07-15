@@ -7,9 +7,9 @@ tlskey = "key.pem"
 # Number of simultanious requests
 workers = 100
 
-# Which IP addresses and ports to listen to. 
+# Which IP addresses and ports to listen to.
 # Use several listener sections if listening to more than one port.
-[[listener]]
+[[listeners]]
 
 # Default port is 1965
 port = 1965
